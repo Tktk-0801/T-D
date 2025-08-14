@@ -2,16 +2,16 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>3人vs敵バトル（HP/ATK表示強化版）</title>
+<title>3人vs敵バトル（ウイ: スキル短縮修正版）</title>
 <style>
   body { background:#0b0b0b; color:#fff; font-family:sans-serif; text-align:center; }
-  #gameContainer { width:960px; margin:18px auto; border:2px solid #fff; padding:12px; position:relative; }
+  #gameContainer { width:960px; margin:18px auto; border:2px solid #fff; padding:12px; position:relative; min-height:620px; }
   .hp-bar { height:14px; background:#c33; border-radius:6px; overflow:hidden; margin-top:6px; }
   .hp-bar-inner { height:100%; background:linear-gradient(90deg,#f66,#a00); width:100%; }
   .player-wrap { display:flex; justify-content:space-between; gap:10px; margin-top:8px; }
   .player-card { background:#111; padding:8px; border-radius:8px; width:30%; box-sizing:border-box; cursor:pointer; }
   .player-card.selected { outline:3px solid gold; }
-  .player-card img { width:64px; height:64px; background:#222; display:block; margin:4px auto; border-radius:6px; }
+  .player-card img { width:64px; height:64px; background:#222; display:block; margin:4px auto; border-radius:6px; object-fit:cover; }
   .small { font-size:12px; color:#ccc; }
   button { margin:6px; padding:6px 10px; border-radius:6px; cursor:pointer; }
   #battleLog { background:#0d0d0d; height:180px; overflow:auto; padding:8px; border:1px solid #444; text-align:left; font-size:13px; margin-top:10px; }
@@ -21,7 +21,6 @@
   .skill-info { margin-top:6px; color:#9f9; text-align:left; }
   .enemy-section { margin-bottom:8px; }
   .effect-badge { display:inline-block; background:#0a0; color:#fff; padding:2px 6px; border-radius:6px; margin-left:6px; font-size:12px; }
-  /* damage pop */
   .damagePop{position:absolute;font-weight:800;color:#ffdddd;text-shadow:0 0 8px #f00;font-size:18px;z-index:1100;pointer-events:none}
 </style>
 </head>
@@ -34,37 +33,36 @@ const players = [
   {id:"sakura", name:"サクラ", baseAtk:2000, hp:10000, maxHp:10000, skillTurn:2, currentTurn:0, image:"", skillDesc:"敵のHP10%ダメ＆2T 攻撃200%UP", effects:[], barrier:0},
   {id:"kana",   name:"カナ",   baseAtk:1400, hp:13000, maxHp:13000, skillTurn:4, currentTurn:0, image:"", skillDesc:"味方全員攻撃110%UP＆HP800バリア", effects:[], barrier:0},
   {id:"hina",   name:"ヒナ",   baseAtk:1900, hp:13000, maxHp:13000, skillTurn:17, currentTurn:0, image:"", skillDesc:"合計ATKの500%ダメージ", effects:[], barrier:0},
-  {id:"mika",   name:"ミカ",   baseAtk:1200, hp:10000, maxHp:10000, skillTurn:10, currentTurn:0, image:"", skillDesc:"1540%通常スキル（改変可）", effects:[], barrier:0},
+  {id:"mika",   name:"ミカ",   baseAtk:1200, hp:10000, maxHp:10000, skillTurn:10, currentTurn:0, image:"", skillDesc:"攻撃1540%→調整可", effects:[], barrier:0},
   {id:"seina",  name:"セイナ",  baseAtk:1800, hp:14500, maxHp:14500, skillTurn:3, currentTurn:0, image:"", skillDesc:"2T 吸収バリア", effects:[], barrier:0},
 
-  // 追加キャラ（省略しない）
   {id:"kayoko", name:"カヨコ", baseAtk:1000, hp:12000, maxHp:12000, skillTurn:3, currentTurn:0, image:"", skillDesc:"受けた200%分反撃（3T）", effects:[], barrier:0},
   {id:"cocona", name:"ココナ", baseAtk:300,  hp:23000, maxHp:23000, skillTurn:5, currentTurn:0, image:"", skillDesc:"味方HP70%回復 & 3T ATK200%UP", effects:[], barrier:0},
   {id:"iwori",  name:"イヲリ",  baseAtk:3000, hp:11000, maxHp:11000, skillTurn:17, currentTurn:0, image:"", skillDesc:"合計HP+ATKの250%ダメ", effects:[], barrier:0},
-  {id:"ui",     name:"ウイ",    baseAtk:800,  hp:16000, maxHp:16000, skillTurn:10, currentTurn:0, image:"", skillDesc:"味方のスキルターンを3進める", effects:[], barrier:0},
-  {id:"kikyou", name:"キキョウ",baseAtk:3200, hp:9900,  maxHp:9900,  skillTurn:6, currentTurn:0, image:"", skillDesc:"HP-3000 自分ATK+700%（改）", effects:[], barrier:0},
+  {id:"ui",     name:"ウイ",    baseAtk:800,  hp:16000, maxHp:16000, skillTurn:10, currentTurn:0, image:"", skillDesc:"味方の残りスキルターンを2短縮 (例:7→5)", effects:[], barrier:0},
+  {id:"kikyou", name:"キキョウ",baseAtk:3200, hp:9900,  maxHp:9900,  skillTurn:6, currentTurn:0, image:"", skillDesc:"HP-3000 自分ATK大幅UP", effects:[], barrier:0},
   {id:"kanna",  name:"カンナ",  baseAtk:1100, hp:12000, maxHp:12000, skillTurn:3, currentTurn:0, image:"", skillDesc:"自身と右側の味方ATK160%UP", effects:[], barrier:0},
   {id:"kuroko", name:"クロコ", baseAtk:1200, hp:14000, maxHp:14000, skillTurn:6, currentTurn:0, image:"", skillDesc:"4T 不死身 & 全員ATK170%UP", effects:[], barrier:0},
   {id:"marie",  name:"マリー", baseAtk:900,  hp:11000, maxHp:11000, skillTurn:3, currentTurn:0, image:"", skillDesc:"味方のスキル-1 & 2T HP1000バリア", effects:[], barrier:0},
   {id:"nel",    name:"ネル",   baseAtk:1900, hp:9800,  maxHp:9800,  skillTurn:19, currentTurn:0, image:"", skillDesc:"合計ATKの300%ダメ & 味方HP50%回復", effects:[], barrier:0},
   {id:"hoshino",name:"ホシノ", baseAtk:1500, hp:15000, maxHp:15000, skillTurn:5, currentTurn:0, image:"", skillDesc:"3T 全員5000バリア & ATK170%UP", effects:[], barrier:0},
-  {id:"seia",  name:"セイア", baseAtk:1100, hp:15000, maxHp:15000, skillTurn:7, currentTurn:0, image:"", skillDesc:"スキル効果持続+3T & 味方1人ATK140%UP", effects:[], barrier:0},
-  {id:"hina_d", name:"ヒナ(ドレス)", baseAtk:1300, hp:13000, maxHp:13000, skillTurn:17, currentTurn:0, image:"", skillDesc:"18T 自身ATKが毎ターン+110%加算", effects:[], barrier:0},
-  {id:"mika_b", name:"ミカ(水着)", baseAtk:1800, hp:15000, maxHp:15000, skillTurn:8, currentTurn:0, image:"", skillDesc:"3000% & 全員4T ATK200%UP & 確定会心4T", effects:[], barrier:0}
+  {id:"seia",  name:"セイア", baseAtk:1100, hp:15000, maxHp:15000, skillTurn:7, currentTurn:0, image:"", skillDesc:"スキル持続+3T & 味方1人ATK140%UP", effects:[], barrier:0},
+  {id:"hina_d", name:"ヒナ(ドレス)", baseAtk:1300, hp:13000, maxHp:13000, skillTurn:17, currentTurn:0, image:"", skillDesc:"18T 自身ATKが毎ターン+150%加算", effects:[], barrier:0},
+  {id:"mika_b", name:"ミカ(水着)", baseAtk:1800, hp:15000, maxHp:15000, skillTurn:8, currentTurn:0, image:"", skillDesc:"3000% & 全員4T ATK200%UP & 会心確定4T", effects:[], barrier:0}
 ];
 
-// 画像が localStorage にあれば読み込み
+// localStorage から画像を読み込み
 players.forEach(p=>{
   const v = localStorage.getItem('player_image_' + p.id);
   if(v) p.image = v;
 });
 
-// ---------- 敵リスト（抜粋） ----------
+// ---------- 敵 ----------
 const enemies = [
   {name:"魔王ゴルゴーン", hp:50000, maxHp:50000, atk:300, behavior:["single","aoe","buff"]},
   {name:"ドラゴンキング", hp:60000, maxHp:60000, atk:350, behavior:["single","aoe","buff"]},
   {name:"終焉の巨像", hp:500000, maxHp:500000, atk:4000, behavior:["big","healRare"]},
-  {name:"虚無の王", hp:400000, maxHp:400000, atk:3200, behavior:["single","big","healRare"]},
+  {name:"虚無の王", hp:400000, maxHp:400000, atk:3202, behavior:["single","big","healRare"]},
   {name:"凶犬ヘルガ", hp:80000, maxHp:80000, atk:1400, behavior:["single","multi"]},
   {name:"灼熱タイラント", hp:120000, maxHp:120000, atk:2000, behavior:["single","aoe","burn"]},
   {name:"星喰いワーム", hp:220000, maxHp:220000, atk:2600, behavior:["aoe","big"]},
@@ -72,13 +70,12 @@ const enemies = [
   {name:"深淵の大鯨", hp:250000, maxHp:250000, atk:2000, behavior:["aoe","healRare"]}
 ];
 
-// 選択関連
-let selectedPlayerIndexes = []; // players 配列の index (出撃)
-let selectedSlot = 0;           // UI上の選択スロット (0..2)
+// 状態
+let selectedPlayerIndexes = [];
+let selectedSlot = 0;
 let currentEnemy = null;
 let turnCount = 1;
 
-// ---------- ユーティリティ ----------
 function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
 function popDamage(x, left, top, isCrit=false){
   const cont = document.getElementById('gameContainer');
@@ -95,7 +92,7 @@ function popDamage(x, left, top, isCrit=false){
 // ---------- UI: ホーム ----------
 function showHome(){
   const c = document.getElementById('gameContainer');
-  c.innerHTML = `<h1>3人 vs 敵 バトル（HP/ATK表示）</h1><h3>敵を選べ</h3>`;
+  c.innerHTML = `<h1>3人 vs 敵 バトル</h1><h3>敵を選べ</h3>`;
   enemies.forEach((e,i)=>{
     const btn = document.createElement('button');
     btn.innerText = e.name;
@@ -115,7 +112,7 @@ function showCharacterSelect(){
   const wrap = document.createElement('div'); wrap.style.display='flex'; wrap.style.gap='8px'; wrap.style.flexWrap='wrap';
   players.forEach((p, idx)=>{
     const card = document.createElement('div'); card.className='player-card';
-    card.innerHTML = `<img id="icon_${p.id}" src="${p.image||''}" alt=""><div style="text-align:center">${p.name}<div class="small">HP:${p.maxHp} ATK:${p.baseAtk}</div></div>
+    card.innerHTML = `<img id="icon_${p.id}" src="${p.image||''}" alt=""><div style="text-align:center">${p.name}<div class="small">HP:${p.maxHp} ATK:${p.baseAtk || p.baseAtk === 0 ? p.baseAtk : p.baseAtk}</div></div>
       <input type="file" id="file_${p.id}" style="width:100%; margin-top:6px">`;
     card.onclick = ()=>{
       if(selectedPlayerIndexes.includes(idx)){ selectedPlayerIndexes = selectedPlayerIndexes.filter(x=>x!==idx); card.classList.remove('selected'); }
@@ -123,8 +120,7 @@ function showCharacterSelect(){
     };
     wrap.appendChild(card);
 
-    // ファイル入力イベントバインド（遅延で確実に存在させる）
-    setTimeout(()=>{ const input = document.getElementById('file_'+p.id); if(input) input.onchange = (ev)=>{ const f = ev.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = e=>{ players[idx].image = e.target.result; document.getElementById('icon_'+p.id).src = e.target.result; localStorage.setItem('player_image_'+p.id, e.target.result); }; r.readAsDataURL(f); }; },50);
+    setTimeout(()=>{ const input = document.getElementById('file_'+p.id); if(input) input.onchange = (ev)=>{ const f = ev.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = e=>{ players[idx].image = e.target.result; const icon = document.getElementById('icon_'+p.id); if(icon) icon.src = e.target.result; localStorage.setItem('player_image_'+p.id, e.target.result); }; r.readAsDataURL(f); }; },50);
   });
   c.appendChild(wrap);
   const start = document.createElement('div'); start.style.marginTop='12px';
@@ -132,14 +128,14 @@ function showCharacterSelect(){
   c.appendChild(start);
   document.getElementById('startBtn').onclick = ()=>{
     if(selectedPlayerIndexes.length !== 3){ alert('3人選んでくれ'); return; }
-    selectedPlayerIndexes.forEach(i=>{ players[i].hp = players[i].maxHp; players[i].currentTurn = 0; players[i].effects = []; players[i].barrier = 0; players[i].undead = false; players[i].absorb = false; players[i].absorbTurn = 0; players[i].guaranteedCrit = 0; });
+    selectedPlayerIndexes.forEach(i=>{ players[i].hp = players[i].maxHp; players[i].currentTurn = 0; players[i].effects = []; players[i].barrier = 0; players[i].undead = false; players[i].absorb = false; players[i].absorbTurn = 0; players[i].guaranteedCrit = 0; players[i].hinaDress = null; });
     selectedSlot = 0;
     turnCount = 1;
     startBattle();
   };
 }
 
-// ---------- バトル表示（強化部分：味方個別HP/ATKを常時表示） ----------
+// ---------- バトル表示 ----------
 function startBattle(){
   const c = document.getElementById('gameContainer');
   c.innerHTML = `
@@ -157,7 +153,7 @@ function startBattle(){
     <div id="battleLog"></div>
     <hr>
     <div style="margin-top:8px">
-      <h4>出撃スロット画像アップロード</h4>
+      <h4>出撃スロット画像アップロード（各スロットに割り当てたキャラに保存されます）</h4>
       <input type="file" id="slot0"> <input type="file" id="slot1"> <input type="file" id="slot2">
     </div>
   `;
@@ -167,13 +163,11 @@ function startBattle(){
 }
 
 function renderBattle(){
-  // 敵HPバー更新
   const eInner = document.getElementById('enemyHpInner');
   const pct = clamp(currentEnemy.hp / currentEnemy.maxHp * 100, 0, 100);
   eInner.style.width = pct + '%';
   document.getElementById('enemyHpText').innerText = `HP: ${Math.max(0, Math.floor(currentEnemy.hp))} / ${currentEnemy.maxHp}`;
 
-  // 味方エリアを描画（個別HPバーとATKが常時見えるように）
   const area = document.getElementById('playersArea');
   area.innerHTML = '<h3>味方（左→右）</h3>';
   const wrap = document.createElement('div'); wrap.className='player-wrap';
@@ -182,10 +176,7 @@ function renderBattle(){
     const card = document.createElement('div'); card.className='player-card';
     if(slot === selectedSlot) card.classList.add('selected');
 
-    // 現在ATK（バフ込み）計算
     const currentAtk = computeAtk(p);
-
-    // HPバー inner
     const hpPct = clamp(p.hp / p.maxHp * 100, 0, 100);
     const hpBar = `<div class="hp-bar" style="background:#333"><div class="hp-bar-inner" style="width:${hpPct}%; background:linear-gradient(90deg,#6f6,#0a0)"></div></div>`;
 
@@ -193,6 +184,7 @@ function renderBattle(){
     if(p.barrier && p.barrier > 0) extraBadges += `<span class="badge">Barrier:${p.barrier}</span>`;
     if(p.absorb && p.absorbTurn>0) extraBadges += `<span class="effect-badge">吸収:${p.absorbTurn}</span>`;
     if(p.guaranteedCrit && p.guaranteedCrit>0) extraBadges += `<span class="badge">会心確定:${p.guaranteedCrit}T</span>`;
+    if(p.hinaDress && p.hinaDress.turns > 0) extraBadges += `<span class="badge">DressStacks:${p.hinaDress.stacks}</span>`;
 
     card.innerHTML = `
       <img src="${p.image||''}" alt="${p.name}">
@@ -210,7 +202,7 @@ function renderBattle(){
   area.appendChild(wrap);
 }
 
-// ---------- 攻撃・会心・計算 ----------
+// ---------- 計算 ----------
 function computeAtk(p){
   let mul = 1.0;
   if(p.effects && p.effects.length){
@@ -218,11 +210,14 @@ function computeAtk(p){
       if(e.type === 'atkMulti') mul *= e.mult;
     });
   }
+  if(p.hinaDress && p.hinaDress.stacks && p.hinaDress.stacks > 0){
+    mul *= (1 + 1.5 * p.hinaDress.stacks);
+  }
   return Math.max(0, Math.floor(p.baseAtk * mul));
 }
 function tryCrit(p){
   if(p.guaranteedCrit && p.guaranteedCrit > 0) return true;
-  return Math.random() < 0.15; // 基本会心率15%
+  return Math.random() < 0.15;
 }
 function doDamageVisual(dmg, isCrit=false){
   popDamage(dmg, 420 + Math.random()*100, 120 + Math.random()*40, isCrit);
@@ -241,33 +236,28 @@ function playerAttack(){
   log(`${p.name}の通常攻撃！ 敵に ${dmg}ダメージ ${isCrit? '(会心!)':''}`, 'attack');
   doDamageVisual(dmg, isCrit);
 
-  // チャージ進行
   advanceCharge();
-
   setTimeout(()=>{ enemyAction(); renderBattle(); checkBattleEnd(); }, 450);
   renderBattle();
 }
 
-// ---------- スキル使用 ----------
+// ---------- スキル ----------
 function useSkill(){
-  if(selectedSlot === null || selectedSlot === undefined){ alert('スキル使う枠選べ'); return; }
+  if(selectedSlot === null || selectedSlot === undefined){ alert('スキル使う枠選んで'); return; }
   const pIdx = selectedPlayerIndexes[selectedSlot];
   const p = players[pIdx];
   if(!p.skillReady){ alert('スキルまだ溜まってねー'); return; }
 
-  // 派手なエフェクトを先に出す
   playBigEffect(()=>{ useSkillFor(pIdx, selectedSlot); renderBattle(); checkBattleEnd(); });
-  // スキル使用が1アクション分のチャージ進行になる
   setTimeout(()=>{ advanceCharge(); enemyAction(); renderBattle(); checkBattleEnd(); }, 700);
 }
 
-// ---------- スキル個別処理（前と同様、必要なら拡張） ----------
 function useSkillFor(playerIndex, slotIndex){
   const p = players[playerIndex];
+
   if(p.id === 'sakura'){
     const dmg = Math.floor(currentEnemy.hp * 0.10);
     currentEnemy.hp -= dmg;
-    // 味方全員にatk+200%（×3）簡易表現
     selectedPlayerIndexes.forEach(idx=> players[idx].effects.push({type:'atkMulti', mult:3.0, turns:2}));
     log(`サクラ: 刹那の残刀！ 敵に${dmg}ダメージ。味方ATK+200% 2T`, 'attack');
     doDamageVisual(dmg);
@@ -280,7 +270,7 @@ function useSkillFor(playerIndex, slotIndex){
     currentEnemy.hp -= dmg;
     log(`ヒナ: ダークエレクトロ！ 敵に${dmg}ダメージ`, 'attack'); doDamageVisual(dmg);
   } else if(p.id === 'mika'){
-    const dmg = Math.floor(p.baseAtk * 30.8); // 1540% -> 15.4倍 -> earlier requested 3080% etc. adjust as needed
+    const dmg = Math.floor(p.baseAtk * 15.4);
     currentEnemy.hp -= dmg;
     log(`ミカ: 超火力！ ${dmg}ダメージ`, 'attack'); doDamageVisual(dmg);
   } else if(p.id === 'mika_b'){
@@ -294,14 +284,14 @@ function useSkillFor(playerIndex, slotIndex){
     log('セイナ: 2T 吸収バリア展開（ダメ→HP変換）', 'heal');
   } else if(p.id === 'kikyou'){
     p.hp = Math.max(0, p.hp - 3000);
-    p.effects.push({type:'atkMulti', mult:8.0, turns:3}); // 700% -> ×8.0
-    log('キキョウ: HP-3000、ATK+700%（×8） 3T', 'attack');
+    p.effects.push({type:'atkMulti', mult:3.0, turns:3});
+    log('キキョウ: HP-3000、ATK大幅UP 3T', 'attack');
   } else if(p.id === 'cocona'){
     selectedPlayerIndexes.forEach(idx=>{
       const t = players[idx];
       const healAmt = Math.floor(t.maxHp * 0.70);
       t.hp = Math.min(t.maxHp, t.hp + healAmt);
-      t.effects.push({type:'atkMulti', mult:3.0, turns:3}); // 200% -> ×3
+      t.effects.push({type:'atkMulti', mult:3.0, turns:3});
     });
     log('ココナ: 味方HP70%回復 & 3T ATK200%UP', 'heal');
   } else if(p.id === 'kayoko'){
@@ -314,8 +304,14 @@ function useSkillFor(playerIndex, slotIndex){
     currentEnemy.hp -= dmg;
     log(`イヲリ: デッドストライクショット！ ${dmg}ダメージ`, 'attack'); doDamageVisual(dmg);
   } else if(p.id === 'ui'){
-    selectedPlayerIndexes.forEach(idx=> players[idx].currentTurn = Math.max(0, players[idx].currentTurn - 3));
-    log('ウイ: 味方のスキルチャージを3進めた', 'heal');
+    // ここを「残りターンを2短縮」にする（currentTurn を +2）
+    selectedPlayerIndexes.forEach(idx => {
+        const t = players[idx];
+        // currentTurn を増やして残りを減らす。上限は skillTurn。
+        t.currentTurn = Math.min(t.skillTurn, t.currentTurn + 2);
+        t.skillReady = (t.currentTurn >= t.skillTurn);
+    });
+    log('ウイ: 味方の残りスキルターンを2短縮した（例:7→5）', 'heal');
   } else if(p.id === 'kuroko'){
     selectedPlayerIndexes.forEach(idx=>{ players[idx].undead = true; players[idx].undeadTurn = 4; players[idx].effects.push({type:'atkMulti', mult:2.7, turns:4}); });
     log('クロコ: 4T 不死身 & 全員ATK170%UP', 'heal');
@@ -337,6 +333,9 @@ function useSkillFor(playerIndex, slotIndex){
     const tIdx = selectedPlayerIndexes[targetSlot];
     if(tIdx !== undefined){ players[tIdx].effects.push({type:'atkMulti', mult:2.4, turns:3}); log('セイア: スキル持続+3 & 対象ATK140%UP 3T','heal'); }
     else log('セイア: 対象がいない','normal');
+  } else if(p.id === 'hina_d'){
+    p.hinaDress = { turns: 18, stacks: 0 };
+    log('ヒナ(ドレス): 終幕・イシュボルテ発動！18T、毎ターン自身ATKが+150%ずつ増加', 'attack');
   } else {
     log(`${p.name} のスキルは未実装`, 'normal');
   }
@@ -358,7 +357,6 @@ function enemyAction(){
     if(t.undead && t.undeadTurn>0){ log(`${t.name} は不死身で無効化！`, 'heal'); }
     else if(t.absorb && t.absorbTurn>0){ t.hp = Math.min(t.maxHp, t.hp + dmgBase); log(`${t.name}の吸収が${dmgBase}をHPに変換！`, 'heal'); doDamageVisual(dmgBase); }
     else {
-      // barrier
       let dmg = dmgBase;
       if(t.barrier > 0){
         if(dmg <= t.barrier){ t.barrier -= dmg; log(`${t.name}のバリアが${dmg}を吸収！ 残:${t.barrier}`,'heal'); dmg = 0; }
@@ -382,10 +380,10 @@ function enemyAction(){
     });
     log(`${currentEnemy.name} の全体攻撃！`, 'attack'); playSmallEffect();
   } else if(a === 'buff'){
-    currentEnemy.atk = Math.floor(currentEnemy.atk * 1.15);
+    currentEnemy.atk = Math.floor(currentEnemy.atk * 1.12);
     log(`${currentEnemy.name} が攻撃上昇！`, 'attack');
   } else if(a === 'healRare'){
-    if(Math.random() < 0.35){ const heal = Math.floor(currentEnemy.maxHp * 0.08); currentEnemy.hp = Math.min(currentEnemy.maxHp, currentEnemy.hp + heal); log(`${currentEnemy.name} が希に回復 +${heal}`,'heal'); playSmallEffect(); } else log(`${currentEnemy.name} は回復を控えた`,'normal');
+    if(Math.random() < 0.35){ const heal = Math.floor(currentEnemy.maxHp * 0.06); currentEnemy.hp = Math.min(currentEnemy.maxHp, currentEnemy.hp + heal); log(`${currentEnemy.name} が希に回復 +${heal}`,'heal'); playSmallEffect(); } else log(`${currentEnemy.name} は回復を控えた`,'normal');
   } else if(a === 'big'){
     selectedPlayerIndexes.forEach(pIdx=>{ players[pIdx].hp = Math.max(0, players[pIdx].hp - currentEnemy.atk * 2); });
     log(`${currentEnemy.name} の大技！ 全員大ダメージ`, 'attack'); playBigEffect();
@@ -393,23 +391,36 @@ function enemyAction(){
     log(`${currentEnemy.name} の奇行`,'normal');
   }
 
-  // 継続効果デクリメント
+  // 継続効果デクリメント & ドレスヒナ stacks
   selectedPlayerIndexes.forEach(idx=>{
     const p = players[idx];
     if(p.absorbTurn > 0){ p.absorbTurn--; if(p.absorbTurn===0) p.absorb=false; }
     if(p.undeadTurn > 0){ p.undeadTurn--; if(p.undeadTurn===0) p.undead=false; }
-    if(p.effects && p.effects.length){ p.effects.forEach(e=> e.turns = Math.max(0, e.turns - 1)); p.effects = p.effects.filter(e=> e.turns > 0); }
+    if(p.effects && p.effects.length){
+      p.effects.forEach(e=> e.turns = Math.max(0, e.turns - 1));
+      p.effects = p.effects.filter(e=> e.turns > 0);
+    }
     if(p.guaranteedCrit && p.guaranteedCrit>0) p.guaranteedCrit--;
+    if(p.hinaDress && p.hinaDress.turns > 0){
+      p.hinaDress.stacks = (p.hinaDress.stacks || 0) + 1;
+      p.hinaDress.turns--;
+      if(p.hinaDress.turns === 0){
+        log(`${p.name} のドレス効果が切れた。`, 'normal');
+      } else {
+        log(`${p.name} のドレス効果：スタック +1（合計 ${p.hinaDress.stacks}）`, 'normal');
+      }
+    }
+    if(p.barrier && p.barrier < 0) p.barrier = 0;
   });
 }
 
-// ---------- 更新系 ----------
+// ---------- 更新 ----------
 function advanceCharge(){
   selectedPlayerIndexes.forEach(idx=>{ const p = players[idx]; p.currentTurn++; if(p.currentTurn >= p.skillTurn) p.skillReady = true; });
 }
 
-// ---------- 効果派手め ----------
-function playBigEffect(cb){ // 大きい派手エフェクト
+// ---------- エフェクト ----------
+function playBigEffect(cb){
   const cont = document.getElementById('gameContainer');
   const el = document.createElement('div'); el.style.position='absolute'; el.style.left='50%'; el.style.top='40px'; el.style.transform='translateX(-50%)'; el.style.width='420px'; el.style.height='220px'; el.style.borderRadius='50%'; el.style.background='radial-gradient(circle,#ff6a6a,transparent)'; el.style.opacity='0.95'; el.style.zIndex=999;
   cont.appendChild(el);

@@ -63,10 +63,13 @@ const enemies = [
   {name:"ドラゴンキング", hp:60000, maxHp:60000, atk:350, behavior:["single","aoe","buff"]},
   {name:"終焉の巨像", hp:500000, maxHp:500000, atk:4000, behavior:["big","healRare"]},
   {name:"虚無の王", hp:400000, maxHp:400000, atk:3202, behavior:["single","big","healRare"]},
+　{name:"ラルガドル", hp:230000, maxHp:230000, atk:2800, behavior:["single","aoe","healRare"]},
   {name:"凶犬ヘルガ", hp:80000, maxHp:80000, atk:1400, behavior:["single","multi"]},
   {name:"灼熱タイラント", hp:120000, maxHp:120000, atk:2000, behavior:["single","aoe","burn"]},
   {name:"星喰いワーム", hp:220000, maxHp:220000, atk:2600, behavior:["aoe","big"]},
+  {name:"ヒエロニムス", hp:400000, maxHp:400000, atk:2800, behavior:["aoe","big","single"]},
   {name:"メカゴルム", hp:180000, maxHp:180000, atk:1800, behavior:["single","buff","aoe"]},
+  {name:"ビナー", hp:380000, maxHp:380000, atk:1800, behavior:["single","buff","aoe"]},
   {name:"深淵の大鯨", hp:250000, maxHp:250000, atk:2000, behavior:["aoe","healRare"]}
 ];
 
